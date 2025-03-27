@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import React, { useState, useEffect } from "react"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -8,18 +8,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { ChartContainer } from "@/components/ui/chart"
-import { formatDate, getLast7Days } from "@/lib/utils"
+import { formatDate, getLast7Days, sortByDate } from "@/lib/utils"
 import WeightManagementPlan from "@/components/weight-management-plan"
-
-// Add imports for new components
-import AdvancedCharts from "@/components/advanced-charts"
-import AIPredictions from "@/components/ai-predictions"
+import DashboardAI from "@/components/Dashboard/DashboardAI"
 
 export default function Dashboard() {
-  const [waterHistory, setWaterHistory] = useState<any[]>([])
-  const [calorieHistory, setCalorieHistory] = useState<any[]>([])
-  const [bmiHistory, setBmiHistory] = useState<any[]>([])
-  const [latestBmi, setLatestBmi] = useState<number | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState("")
+  const [bmiHistory, setBmiHistory] = useState([])
+  const [waterHistory, setWaterHistory] = useState([])
+  const [calorieHistory, setCalorieHistory] = useState([])
   const [userDetails, setUserDetails] = useState({
     height: 0,
     weight: 0,
@@ -28,14 +26,13 @@ export default function Dashboard() {
     activityLevel: "moderate",
     unit: "metric",
   })
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
 
+  // Fetch user data
   useEffect(() => {
     try {
       // Load data from localStorage
       const savedBmiHistory = localStorage.getItem("bmiHistory")
-      let parsedBmiHistory: any[] = []
+      let parsedBmiHistory = []
 
       if (savedBmiHistory) {
         try {
@@ -110,7 +107,7 @@ export default function Dashboard() {
         }
 
         const totalCalories = Array.isArray(meals)
-          ? meals.reduce((sum: number, meal: any) => {
+          ? meals.reduce((sum, meal) => {
               const mealCalories =
                 meal && typeof meal === "object" && "calories" in meal ? Number(meal.calories) || 0 : 0
               return sum + mealCalories
@@ -148,6 +145,13 @@ export default function Dashboard() {
     } finally {
       setIsLoading(false)
     }
+
+    // Make sure to sort BMI data chronologically
+    if (bmiHistory && bmiHistory.length > 0) {
+      setBmiHistory(sortByDate(bmiHistory))
+    }
+    
+    setIsLoading(false)
   }, [])
 
   if (isLoading) {
@@ -186,13 +190,13 @@ export default function Dashboard() {
       : []
 
   return (
-    <div className="container max-w-4xl mx-auto p-4 pb-20">
-      <div className="flex items-center mb-6">
-        <Link href="/">
-          <Button variant="ghost" size="icon" className="mr-2">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-        </Link>
+    <div className="container max-w-6xl mx-auto p-4 pb-20">
+      <div className="flex items-center gap-2 mb-6">
+        <Button asChild variant="outline" size="icon">
+          <Link href="/">
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+        </Button>
         <h1 className="text-2xl font-bold">Dashboard</h1>
       </div>
 
@@ -415,11 +419,7 @@ export default function Dashboard() {
           <AdvancedCharts bmiData={validBmiHistory} waterData={validWaterHistory} calorieData={validCalorieHistory} />
 
           <div className="mt-4">
-            <AIPredictions
-              bmiHistory={validBmiHistory}
-              waterHistory={validWaterHistory}
-              calorieHistory={validCalorieHistory}
-            />
+            <DashboardAI user={userDetails} />
           </div>
         </div>
       )}
@@ -427,7 +427,7 @@ export default function Dashboard() {
   )
 }
 
-function getBmiColor(bmiValue: number | undefined | null) {
+function getBmiColor(bmiValue) {
   if (bmiValue === undefined || bmiValue === null || isNaN(bmiValue)) return "text-muted-foreground"
   if (bmiValue < 18.5) return "text-blue-500"
   if (bmiValue < 25) return "text-green-500"
