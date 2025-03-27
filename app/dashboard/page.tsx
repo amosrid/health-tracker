@@ -18,6 +18,7 @@ export default function Dashboard() {
   const [bmiHistory, setBmiHistory] = useState([])
   const [waterHistory, setWaterHistory] = useState([])
   const [calorieHistory, setCalorieHistory] = useState([])
+  const [latestBmi, setLatestBmi] = useState(null)  // Add this line
   const [userDetails, setUserDetails] = useState({
     height: 0,
     weight: 0,
